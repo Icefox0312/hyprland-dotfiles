@@ -20,8 +20,8 @@ Run the automated installer to set up dependencies, back up existing configs, an
 
 ```bash
 # Clone the repository
-git clone [https://github.com/YOUR_USERNAME/dotfiles.git](https://github.com/YOUR_USERNAME/dotfiles.git) ~/.dotfiles
-cd ~/.dotfiles
+git clone [https://github.com/Icefox0312/hyprland-dotfiles.git
+cd ~/hyprland-dotfiles
 
 # Make the installer executable & run
 chmod +x install.sh
