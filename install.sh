@@ -84,7 +84,7 @@ fi
 
 # --- 4. Copying the config files ---
   rm -rf ~/.config/hypr && cp -r ~/hyprland-dotfiles/.config/hypr ~/.config/
-  rm -rf ~/.config/kitty cp -r  ~/hyprland-dotfiles/.config/kitty ~/.config/kitty
+  rm -rf ~/.config/kitty && cp -r  ~/hyprland-dotfiles/.config/kitty ~/.config/kitty
   rm -rf ~/.config/quickshell && -r  ~/hyprland-dotfiles/.config/quickshell ~/.config/
   rm -rf ~/.config/swaync && cp -r  ~/hyprland-dotfiles/.config/swaync ~/.config/
   rm -rf ~/.config/waybar && cp -r  ~/hyprland-dotfiles/.config/waybar ~/.config/
