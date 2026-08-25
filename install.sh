@@ -87,8 +87,20 @@ fi
   rm -rf ~/.config/quickshell && cp -r  ~/hyprland-dotfiles/.config/quickshell ~/.config/
   rm -rf ~/.config/swaync && cp -r  ~/hyprland-dotfiles/.config/swaync ~/.config/
   rm -rf ~/.config/waybar && cp -r  ~/hyprland-dotfiles/.config/waybar ~/.config/
-  rm -rf ~/.config/waybar && cp -r  ~/hyprland-dotfiles/.config/wlogout ~/.config/
+  rm -rf ~/.config/wlogout && cp -r  ~/hyprland-dotfiles/.config/wlogout ~/.config/
   cp -r  ~/hyprland-dotfiles/.local/apply_wallpaper.sh ~/.local/bin
 
-# --- 4. Finish ---
-echo -e "${GREEN}==>${NC} Installation and setup complete! Log out and start Hyprland."
+# --- 5. Finish ---
+echo -e "${GREEN}==>${NC} Installation and setup complete!."
+
+# --- 6. System Reboot ---
+echo -e "\n${YELLOW}==>${NC} Installation finished. System will restart in 5 seconds."
+echo -e "${YELLOW}==>${NC} Press ${RED}Ctrl+C${NC} to cancel."
+
+for i in {5..1}; do
+    echo -ne "\rRestarting in $i..."
+    sleep 1
+done
+
+echo -e "\n${GREEN}Restarting now...${NC}"
+systemctl reboot
