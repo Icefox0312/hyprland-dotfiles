@@ -15,25 +15,22 @@ echo -e "${BLUE}==>${NC} Starting Hyprland Dotfiles Installation..."
 CORE_PKGS=(
     hyprland
     waybar
-    rofi-wayland
     kitty
     swaync
-    hyprpaper
     hyprlock
-    hypridle
     wl-clipboard
-    grim
-    slurp
     brightnessctl
     playerctl
     polkit-gnome
     xdg-desktop-portal-hyprland
     ttf-jetbrains-mono-nerd
     noto-fonts-emoji
+    xdg-user-dirs
 )
 
 AUR_PKGS=(
     wlogout
+    quickshell
 )
 
 # --- 1. Check & Install AUR Helper (yay) ---
