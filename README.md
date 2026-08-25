@@ -20,7 +20,7 @@ Run the automated installer to set up dependencies, back up existing configs, an
 
 ```bash
 # Clone the repository
-git clone [https://github.com/Icefox0312/hyprland-dotfiles.git
+git clone https://github.com/Icefox0312/hyprland-dotfiles.git
 cd ~/hyprland-dotfiles
 
 # Make the installer executable & run
