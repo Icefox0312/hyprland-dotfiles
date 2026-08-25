@@ -1,0 +1,177 @@
+/* =========================================================
+   SWAYNC 0.12.6
+   iOS / Nothing OS inspired
+   Dark • Minimal • Rounded
+   ========================================================= */
+
+* {
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 12px;
+    color: #eeeeee;
+}
+
+window#control-center {
+    background: #000000;
+}
+
+/* =========================================================
+   CONTROL CENTER WINDOW & CONTAINER
+   ========================================================= */
+
+window#control-center {
+    background: #000000;
+}
+
+.control-center {
+    min-width: 280px;
+    padding: 6px;
+    
+    /* ADD THESE MARGINS */
+    margin-top: 16px;    /* Moves the panel down */
+    margin-right: 12px;  /* Moves the panel slightly away from the right edge */
+}
+
+/* =========================================================
+   MEDIA PLAYER (Aggressively Compact)
+   ========================================================= */
+
+.widget-mpris {
+    margin: 0 0 6px 0;
+    padding: 0;
+}
+
+.widget-mpris-player {
+    /* Removed min-height so it shrinks exactly to the content */
+    padding: 4px 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.065);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.widget-mpris-album-art {
+    margin-right: 6px;
+    border-radius: 8px;
+}
+
+.widget-mpris-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.widget-mpris-subtitle {
+    margin-top: 0;
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.widget-mpris button {
+    /* Absolute minimum button sizes */
+    min-width: 20px;
+    min-height: 20px;
+    margin: 0 2px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+}
+
+.widget-mpris button:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.widget-mpris button:active {
+    background: rgba(255, 255, 255, 0.20);
+}
+
+/* =========================================================
+   NOTIFICATIONS TITLE
+   ========================================================= */
+
+.widget-title {
+    margin: 2px 2px 4px 2px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* =========================================================
+   NOTIFICATIONS
+   ========================================================= */
+
+.notification {
+    margin: 4px 0;
+    padding: 16px; /* Increased from 6px to make the rectangle taller */
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.notification:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.notification-content {
+    padding: 0;
+}
+
+.summary {
+    font-size: 11px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.body {
+    margin-top: 2px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.60);
+}
+
+.time {
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.notification-image {
+    border-radius: 6px;
+}
+
+.close-button {
+    min-width: 16px;
+    min-height: 16px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.close-button:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+/* =========================================================
+   POPUP NOTIFICATIONS
+   ========================================================= */
+
+.notification-row {
+    outline: none;
+}
+
+.notification-row .notification-background {
+    margin: 4px;
+    border-radius: 12px;
+    background: rgba(18, 18, 20, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.notification-row.critical .notification-background {
+    border-color: rgba(255, 255, 255, 0.20);
+}
+
+.blank-window {
+    background: transparent;
+}
