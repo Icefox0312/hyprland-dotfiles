@@ -17,20 +17,23 @@ CORE_PKGS=(
     waybar
     kitty
     swaync
+    awww
     hyprlock
+    hypridle
     wl-clipboard
+    grim
+    slurp
     brightnessctl
     playerctl
     polkit-gnome
     xdg-desktop-portal-hyprland
     ttf-jetbrains-mono-nerd
     noto-fonts-emoji
-    xdg-user-dirs
+    mpirs
 )
 
 AUR_PKGS=(
     wlogout
-    quickshell
 )
 
 # --- 1. Check & Install AUR Helper (yay) ---
@@ -49,31 +52,44 @@ sudo pacman -S --needed --noconfirm "${CORE_PKGS[@]}"
 echo -e "${BLUE}==>${NC} Installing AUR packages..."
 yay -S --needed --noconfirm "${AUR_PKGS[@]}"
 
-# --- 3. Backup Existing Configurations ---
+# --- 3. Backup & Copy Configurations ---
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="$HOME/.config"
 BACKUP_DIR="$HOME/.config/cfg_backups_$(date +%Y%m%d_%H%M%S)"
 
-echo -e "${BLUE}==>${NC} Creating backup directory at${BACKUP_DIR}..."
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$CONFIG_DIR"
 
-CONFIGS_TO_LINK=("hypr" "waybar" "rofi" "kitty" "swaync")
+CONFIGS_TO_COPY=("hypr" "waybar" "rofi" "kitty" "swaync")
 
-for cfg in "${CONFIGS_TO_LINK[@]}"; do
+# Check if any target exists before creating backup directory
+needs_backup=false
+for cfg in "${CONFIGS_TO_COPY[@]}"; do
     if [ -d "$CONFIG_DIR/$cfg" ] || [ -f "$CONFIG_DIR/$cfg" ]; then
-        echo -e "${YELLOW}==>${NC} Backing up existing config:$cfg"
-        mv "$CONFIG_DIR/$cfg" "$BACKUP_DIR/"
+        needs_backup=true
+        break
     fi
 done
 
-# --- 4. Deploy Configurations ---
-echo -e "${BLUE}==>${NC} Deploying dotfiles to ~/.config..."
-for cfg in "${CONFIGS_TO_LINK[@]}"; do
-    if [ -d "$DOTFILES_DIR/$cfg" ] || [ -f "$DOTFILES_DIR/$cfg" ]; then
-        echo -e "${GREEN}==>${NC} Linking $cfg -> ~/.config/$cfg"
-        ln -sf "$DOTFILES_DIR/$cfg" "$CONFIG_DIR/$cfg"
-    fi
-done
+if [ "$needs_backup" = true ]; then
+    echo -e "${YELLOW}==>${NC} Existing configurations found. Backing up to ${BACKUP_DIR}..."
+    mkdir -p "$BACKUP_DIR"
+    
+    for cfg in "${CONFIGS_TO_COPY[@]}"; do
+        if [ -d "$CONFIG_DIR/$cfg" ] || [ -f "$CONFIG_DIR/$cfg" ]; then
+            echo -e "${YELLOW}==>${NC} Backing up: $cfg"
+            mv "$CONFIG_DIR/$cfg" "$BACKUP_DIR/"
+        fi
+    done
+fi
 
-# --- 5. Finish ---
-echo -e "${GREEN}==>${NC} Installation complete! Log out and start Hyprland."
+# --- 4. Copying the config files ---
+  rm -rf ~/.config/hypr && cp -r ~/hyprland-dotfiles/.config/hypr ~/.config/
+  rm -rf ~/.config/kitty cp -r  ~/hyprland-dotfiles/.config/kitty ~/.config/kitty
+  rm -rf ~/.config/quickshell && -r  ~/hyprland-dotfiles/.config/quickshell ~/.config/
+  rm -rf ~/.config/swaync && cp -r  ~/hyprland-dotfiles/.config/swaync ~/.config/
+  rm -rf ~/.config/waybar && cp -r  ~/hyprland-dotfiles/.config/waybar ~/.config/
+  rm -rf ~/.config/waybar && cp -r  ~/hyprland-dotfiles/.config/wlogout ~/.config/
+  cp -r  ~/hyprland-dotfiles/.local/apply_wallpaper.sh ~/.local/bin
+
+# --- 4. Finish ---
+echo -e "${GREEN}==>${NC} Installation and setup complete! Log out and start Hyprland."
