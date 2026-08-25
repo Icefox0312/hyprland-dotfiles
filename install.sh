@@ -89,6 +89,7 @@ fi
   rm -rf ~/.config/waybar && cp -r  ~/hyprland-dotfiles/.config/waybar ~/.config/
   rm -rf ~/.config/wlogout && cp -r  ~/hyprland-dotfiles/.config/wlogout ~/.config/
   cp -r  ~/hyprland-dotfiles/.local/apply_wallpaper.sh ~/.local/bin
+  cp -r  ~/hyprland-dotfiles/Wallpapers ~/Pictures/
 
 # --- 5. Finish ---
 echo -e "${GREEN}==>${NC} Installation and setup complete!."
