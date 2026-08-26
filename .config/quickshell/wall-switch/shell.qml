@@ -39,7 +39,7 @@ ShellRoot {
         FolderListModel {
             id: folderModel
             folder: "file://" + Quickshell.env("HOME") + "/Pictures/Wallpapers"
-            nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.mp4]
+            nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp"]
             showDirs: false
             onCountChanged: {
                 let temp = [];
