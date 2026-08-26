@@ -7,7 +7,7 @@ A clean, fast, and minimal Wayland desktop environment configured for Arch Linux
 ## 📸 Preview
 
 <!-- Replace with your actual screenshot path -->
-![Desktop Preview](assets/preview.png)
+![Desktop Preview](my-dotfiles.mp4)
 
 ---
 
