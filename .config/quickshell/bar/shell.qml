@@ -28,16 +28,75 @@ PanelWindow {
     Process { id: sysCmd }
     function runSys(cmd) { sysCmd.exec(["bash", "-c", cmd]); }
 
-    // Safely quote text before passing it to bash.
-    function shellQuote(value) {
-        return "'" + String(value).replace(/'/g, "'\\''") + "'";
-    }
-
     Process { id: briCmd }
     Timer { id: briDebouncer; interval: 20; property int target: 0; onTriggered: briCmd.exec(["bash", "-c", "brightnessctl set " + target + "%"]) }
 
     Process { id: volCmd }
     Timer { id: volDebouncer; interval: 20; property int target: 0; onTriggered: volCmd.exec(["bash", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ " + target + "%"]) }
+
+    // ==========================================
+    // SYSTEM STATUS & GLOBAL KEYBIND ENGINE
+    // ==========================================
+    property string cpuUsage: "0%"
+    property string ramUsage: "0%"
+    property string ramText: "0G/0G"
+    property string diskUsage: "0%"
+    property string diskText: "0G/0G"
+    property string batLevel: "100%"
+
+    // The IPC Bridge: listens for signals from Hyprland
+    Process {
+        id: ipcListener
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (text && text.trim() === "sys") {
+                    activeState = activeState === "sys" ? "clock" : "sys";
+                }
+                ipcListener.exec(["bash", "-c", "cat /tmp/island_ipc"]);
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        runSys("rm -f /tmp/island_ipc && mkfifo /tmp/island_ipc");
+        ipcStartupTimer.start(); 
+        pywalReader.exec(["bash", "-c", "cat ~/.cache/wal/colors.json"]);
+    }
+    Timer { id: ipcStartupTimer; interval: 200; onTriggered: ipcListener.exec(["bash", "-c", "cat /tmp/island_ipc"]) }
+
+    // System Info Fetcher
+    Process {
+        id: sysScanner
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (text) {
+                    var parts = text.trim().split('|');
+                    if (parts.length >= 6) {
+                        cpuUsage = parts[0] + "%";
+                        ramUsage = parts[1] + "%";
+                        ramText = parts[2];
+                        diskUsage = parts[3] + "%";
+                        diskText = parts[4];
+                        batLevel = parts[5] + (parts[5] === "N/A" ? "" : "%");
+                    }
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 2000; running: activeState === "sys"; repeat: true
+        onTriggered: {
+            var cmd = "cpu=$(top -bn1 | grep 'Cpu(s)' | awk '{print int($2 + $4)}'); " +
+                      "ram_pct=$(free | awk '/^Mem:/ {print int($3/$2 * 100)}'); " +
+                      "ram_str=$(free -h | awk '/^Mem:/ {print $3 \"/\" $2}' | sed 's/i//g'); " +
+                      "disk_pct=$(df / | awk 'NR==2 {print int($3/$2 * 100)}'); " +
+                      "disk_str=$(df -h / | awk 'NR==2 {print $3 \"/\" $2}'); " +
+                      "bat=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n 1 || echo 'N/A'); " +
+                      "echo \"$cpu|$ram_pct|$ram_str|$disk_pct|$disk_str|$bat\"";
+            sysScanner.exec(["bash", "-c", cmd]);
+        }
+    }
 
     // ==========================================
     // DYNAMIC LIST MODELS & SCANNERS
@@ -124,7 +183,7 @@ PanelWindow {
                             continue;
                         }
 
-                        var match = cleanLine.match(/Device\s+(([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\s+(.*)/);
+                        var match = cleanLine.match(/(?:\[.*?\]\s*)?Device\s+(([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\s+(.*)/);
                         if (match) {
                             var mac = match[1];
                             var name = match[3];
@@ -141,40 +200,24 @@ PanelWindow {
                         }
                     }
 
-                    // Handle Paired Devices
                     if (newPaired.length > 0) {
-                        if (pairedBtModel.count === 1 && pairedBtModel.get(0).mac === "") {
-                            pairedBtModel.clear();
-                        }
-                        for (var p = 0; p < newPaired.length; p++) {
-                            if (!hasItem(pairedBtModel, newPaired[p].mac)) {
-                                pairedBtModel.append(newPaired[p]);
-                            }
-                        }
+                        if (pairedBtModel.count === 1 && pairedBtModel.get(0).mac === "") pairedBtModel.clear();
+                        for (var p = 0; p < newPaired.length; p++) pairedBtModel.append(newPaired[p]);
                     }
 
-                    // Handle Scanned Devices
                     if (newScanned.length > 0) {
-                        if (scannedBtModel.count === 1 && scannedBtModel.get(0).mac === "") {
-                            scannedBtModel.clear();
-                        }
-                        for (var s = 0; s < newScanned.length; s++) {
-                            if (!hasItem(scannedBtModel, newScanned[s].mac)) {
-                                scannedBtModel.append(newScanned[s]);
-                            }
-                        }
+                        if (scannedBtModel.count === 1 && scannedBtModel.get(0).mac === "") scannedBtModel.clear();
+                        for (var s = 0; s < newScanned.length; s++) scannedBtModel.append(newScanned[s]);
                     }
                 }
 
-                // Fallbacks if empty after checking
                 if (pairedBtModel.count === 1 && pairedBtModel.get(0).mac === "") {
                     pairedBtModel.clear();
                     pairedBtModel.append({mac: "", name: "No paired devices"});
                 }
-
                 if (scannedBtModel.count === 1 && scannedBtModel.get(0).mac === "") {
                     scannedBtModel.clear();
-                    scannedBtModel.append({mac: "", name: "No available devices"});
+                    scannedBtModel.append({mac: "", name: "No devices found"});
                 }
             }
         }
@@ -199,7 +242,7 @@ PanelWindow {
             if (activeState === "cc_wifi") {
                 wifiScanner.exec(["bash", "-c", "nmcli -t --escape no -f SSID,ACTIVE,SIGNAL device wifi list | awk -F: '{print $1 \"|\" $2 \"|\" $3}'"]);
             } else if (activeState === "cc_bt") {
-                btScanner.exec(["bash", "-c", "echo '---PAIRED---'; bluetoothctl devices Paired; echo '---DEVICES---'; bluetoothctl --timeout 2 scan on"]);
+                btScanner.exec(["bash", "-c", "bluetoothctl power on > /dev/null 2>&1; echo '---PAIRED---'; bluetoothctl devices Paired; echo '---DEVICES---'; bluetoothctl --timeout 2 scan on > /dev/null 2>&1; bluetoothctl devices"]);
             }
         }
     }
@@ -221,8 +264,6 @@ PanelWindow {
             }
         }
     }
-
-    Component.onCompleted: pywalReader.exec(["bash", "-c", "cat ~/.cache/wal/colors.json"])
     Timer { interval: 3000; running: true; repeat: true; onTriggered: pywalReader.exec(["bash", "-c", "cat ~/.cache/wal/colors.json"]) }
 
     // --- CLOCK & STATE ---
@@ -236,6 +277,10 @@ PanelWindow {
     property string activeState: "clock" 
 
     onActiveStateChanged: {
+        if (activeState !== "clock") {
+            island.forceActiveFocus();
+        }
+
         if (activeState === "cc_wifi") {
             wifiModel.clear();
             wifiModel.append({ssid: "Scanning networks...", active: false, signal: ""});
@@ -246,7 +291,18 @@ PanelWindow {
             scannedBtModel.clear();
             pairedBtModel.append({mac: "", name: "Loading paired devices..."});
             scannedBtModel.append({mac: "", name: "Scanning for devices..."});
-            btScanner.exec(["bash", "-c", "echo '---PAIRED---'; bluetoothctl devices Paired; echo '---DEVICES---'; bluetoothctl --timeout 2 scan on"]);
+            btScanner.exec(["bash", "-c", "bluetoothctl power on > /dev/null 2>&1; echo '---PAIRED---'; bluetoothctl devices Paired; echo '---DEVICES---'; bluetoothctl devices"]);
+        } else if (activeState === "sys") {
+            var cmd = "cpu=$(top -bn1 | grep 'Cpu(s)' | awk '{print int($2 + $4)}'); " +
+                      "ram_pct=$(free | awk '/^Mem:/ {print int($3/$2 * 100)}'); " +
+                      "ram_str=$(free -h | awk '/^Mem:/ {print $3 \"/\" $2}' | sed 's/i//g'); " +
+                      "disk_pct=$(df / | awk 'NR==2 {print int($3/$2 * 100)}'); " +
+                      "disk_str=$(df -h / | awk 'NR==2 {print $3 \"/\" $2}'); " +
+                      "bat=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n 1 || echo 'N/A'); " +
+                      "echo \"$cpu|$ram_pct|$ram_str|$disk_pct|$disk_str|$bat\"";
+            sysScanner.exec(["bash", "-c", cmd]);
+        } else {
+            runSys("bluetoothctl scan off");
         }
     }
 
@@ -261,47 +317,41 @@ PanelWindow {
         border.width: activeState === "clock" ? 0 : 2
         clip: true
 
-        Timer {
-        id: closeTimer
-        interval: 0500
-        onTriggered: activeState = "clock"
-    }
+        focus: activeState !== "clock"
 
-    Connections {
-        target: pywalBar
-        function onActiveStateChanged() {
-            if (activeState !== "clock") {
-                island.forceActiveFocus();
-            }
-        }
-    }
-
-    focus: activeState !== "clock"
-    Keys.onEscapePressed: {
-        closeTimer.stop();
-        activeState = "clock";
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
-        onExited: {
-            if (activeState !== "clock") {
-                closeTimer.restart();
-            }
-        }
-        onEntered: {
+        Keys.onEscapePressed: {
             closeTimer.stop();
+            activeState = "clock";
         }
-    }
+
+        Timer {
+            id: closeTimer
+            interval: 2000
+            onTriggered: activeState = "clock"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+            onExited: {
+                if (activeState !== "clock") {
+                    closeTimer.restart();
+                }
+            }
+            onEntered: {
+                closeTimer.stop();
+            }
+        }
 
         width: { 
+            if (activeState === "sys") return 370; 
             if (activeState === "cc" || activeState === "cc_wifi" || activeState === "cc_bt" || activeState === "cc_wifi_pass") return 340; 
             if (activeState === "media") return 300; 
             return clockContent.implicitWidth + 40; 
         }
         height: { 
+            if (activeState === "sys") return 195; 
             if (activeState === "cc_wifi_pass") return 230;
             if (activeState === "cc_wifi" || activeState === "cc_bt") return 410; 
             if (activeState === "cc") return 230; 
@@ -506,7 +556,7 @@ PanelWindow {
                                 activeState = "clock";
                             } else {
                                 wifiConnector.targetSsid = model.ssid;
-                                wifiConnector.exec(["bash", "-c", "nmcli dev wifi connect " + shellQuote(model.ssid)]);
+                                wifiConnector.exec(["bash", "-c", "nmcli dev wifi connect '" + model.ssid + "'"]);
                             }
                         }
                     }
@@ -575,7 +625,7 @@ PanelWindow {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        runSys("nmcli dev wifi connect " + shellQuote(selectedSsid) + " password " + shellQuote(passwordInput.text));
+                        runSys("nmcli dev wifi connect '" + selectedSsid + "' password '" + passwordInput.text + "'");
                         passwordInput.text = "";
                         activeState = "clock";
                     }
@@ -695,9 +745,116 @@ PanelWindow {
             }
             Row {
                 spacing: 40; anchors.horizontalCenter: parent.horizontalCenter
-                Text { text: ""; color: (mediaContent.player && mediaContent.player.canGoPrevious) ? pywalColors.primary : "#555555"; font.pixelSize: 24; MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (mediaContent.player && mediaContent.player.canGoPrevious) mediaContent.player.previous() } }
-                Text { text: (mediaContent.player && mediaContent.player.isPlaying) ? "" : ""; color: (mediaContent.player && mediaContent.player.canTogglePlaying) ? pywalColors.accent : "#555555"; font.pixelSize: 28; MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (mediaContent.player && mediaContent.player.canTogglePlaying) mediaContent.player.togglePlaying() } }
-                Text { text: ""; color: (mediaContent.player && mediaContent.player.canGoNext) ? pywalColors.primary : "#555555"; font.pixelSize: 24; MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (mediaContent.player && mediaContent.player.canGoNext) mediaContent.player.next() } }
+                Text { text: ""; color: mediaContent.player ? pywalColors.primary : "#555555"; font.pixelSize: 24; MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (mediaContent.player) mediaContent.player.previous() } }
+                Text { text: (mediaContent.player && mediaContent.player.isPlaying) ? "" : ""; color: mediaContent.player ? pywalColors.accent : "#555555"; font.pixelSize: 28; MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (mediaContent.player) mediaContent.player.togglePlaying() } }
+                Text { text: ""; color: mediaContent.player ? pywalColors.primary : "#555555"; font.pixelSize: 24; MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (mediaContent.player) mediaContent.player.next() } }
+            }
+        }
+
+        // ------------------------------------------
+        // G: SYSTEM STATUS (BTOP / HACKER EDITION)
+        // ------------------------------------------
+        Item {
+            id: sysContent
+            anchors.fill: parent; anchors.margins: 15
+            opacity: activeState === "sys" ? 1 : 0
+            visible: opacity > 0
+            Behavior on opacity { NumberAnimation { duration: 200 } }
+
+            // Dynamic Multi-Color Gradient Bar Generator
+            function makeBar(pctStr) {
+                var p = parseInt(pctStr);
+                var size = 20; 
+                if (isNaN(p)) return "<font color='" + pywalColors.primary + "'>" + "░".repeat(size) + "</font>";
+                
+                var f = Math.max(0, Math.min(size, Math.round((p / 100) * size)));
+                var html = "";
+                
+                // Vibrant hardware-style gradient (Green -> Cyan -> Yellow -> Orange -> Red)
+                var colors = [
+                    "#a6e3a1", "#a6e3a1", "#a6e3a1", "#a6e3a1",
+                    "#89dceb", "#89dceb", "#89dceb", "#89dceb",
+                    "#f9e2af", "#f9e2af", "#f9e2af", "#f9e2af",
+                    "#fab387", "#fab387", "#fab387", "#fab387",
+                    "#f38ba8", "#f38ba8", "#f38ba8", "#f38ba8"
+                ];
+                
+                for (var i = 0; i < size; i++) {
+                    if (i < f) {
+                        html += "<font color='" + colors[i] + "'>█</font>";
+                    } else {
+                        html += "<font color='" + pywalColors.primary + "'>░</font>";
+                    }
+                }
+                return html;
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: activeState = "clock"
+            }
+
+            Column {
+                anchors.fill: parent
+                spacing: 10
+
+                // Clean Header
+                Row {
+                    spacing: 8
+                    Text { text: ""; color: pywalColors.accent; font.bold: true; font.pixelSize: 16 }
+                    Text { text: "System Vitals"; color: pywalColors.foreground; font.bold: true; font.pixelSize: 15 }
+                }
+
+                Text { text: "─".repeat(40); color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; opacity: 0.5 }
+
+                // CPU Stats
+                Row {
+                    spacing: 10
+                    Text { text: "CPU"; color: pywalColors.foreground; font.family: "monospace"; font.bold: true; width: 35; font.pixelSize: 14 }
+                    Row {
+                        Text { text: "["; color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                        Text { text: sysContent.makeBar(cpuUsage); textFormat: Text.RichText; font.family: "monospace"; font.pixelSize: 14 }
+                        Text { text: "]"; color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                    }
+                    Text { text: cpuUsage; color: pywalColors.foreground; font.family: "monospace"; font.bold: true; width: 85; horizontalAlignment: Text.AlignRight; font.pixelSize: 14 }
+                }
+
+                // RAM Stats
+                Row {
+                    spacing: 10
+                    Text { text: "MEM"; color: pywalColors.foreground; font.family: "monospace"; font.bold: true; width: 35; font.pixelSize: 14 }
+                    Row {
+                        Text { text: "["; color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                        Text { text: sysContent.makeBar(ramUsage); textFormat: Text.RichText; font.family: "monospace"; font.pixelSize: 14 }
+                        Text { text: "]"; color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                    }
+                    Text { text: ramText; color: pywalColors.foreground; font.family: "monospace"; font.bold: true; width: 85; horizontalAlignment: Text.AlignRight; font.pixelSize: 14 }
+                }
+
+                // Disk Storage Stats
+                Row {
+                    spacing: 10
+                    Text { text: "DSK"; color: pywalColors.foreground; font.family: "monospace"; font.bold: true; width: 35; font.pixelSize: 14 }
+                    Row {
+                        Text { text: "["; color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                        Text { text: sysContent.makeBar(diskUsage); textFormat: Text.RichText; font.family: "monospace"; font.pixelSize: 14 }
+                        Text { text: "]"; color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                    }
+                    Text { text: diskText; color: pywalColors.foreground; font.family: "monospace"; font.bold: true; width: 85; horizontalAlignment: Text.AlignRight; font.pixelSize: 14 }
+                }
+
+                // BAT Stats
+                Row {
+                    spacing: 10
+                    Text { text: "BAT"; color: pywalColors.foreground; font.family: "monospace"; font.bold: true; width: 35; font.pixelSize: 14 }
+                    Row {
+                        Text { text: "["; color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                        Text { text: sysContent.makeBar(batLevel); textFormat: Text.RichText; font.family: "monospace"; font.pixelSize: 14 }
+                        Text { text: "]"; color: pywalColors.primary; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                    }
+                    Text { text: batLevel; color: pywalColors.foreground; font.family: "monospace"; font.bold: true; width: 85; horizontalAlignment: Text.AlignRight; font.pixelSize: 14 }
+                }
             }
         }
     }
