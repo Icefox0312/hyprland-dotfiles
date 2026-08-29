@@ -29,10 +29,12 @@ CORE_PKGS=(
     xdg-desktop-portal-hyprland
     ttf-jetbrains-mono-nerd
     noto-fonts-emoji
+    xdg-usr-dirs
 )
 
 AUR_PKGS=(
     wlogout
+    quickshell
 )
 
 # --- 1. Check & Install AUR Helper (yay) ---
